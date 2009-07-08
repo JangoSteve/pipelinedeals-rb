@@ -1,5 +1,22 @@
 require 'rubygems'
 require 'activeresource'
+
+# This is debugging code to observe actual HTTP requests being made and response received
+# taken from http://www.nfjsone.com/blog/david_bock/2008/10/debugging_activeresource_connections.html
+class ActiveResource::Connection
+  # Creates new Net::HTTP instance for communication with
+  # remote service and resources.
+  def http
+    http = Net::HTTP.new(@site.host, @site.port)
+    http.use_ssl = @site.is_a?(URI::HTTPS)
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE if http.use_ssl
+    http.read_timeout = @timeout if @timeout
+    #Here's the addition that allows you to see the output
+    http.set_debug_output $stderr
+    return http
+  end
+end
+
  
 module PipelineDeals
    
@@ -13,6 +30,61 @@ module PipelineDeals
      self.site="#{PROTOCOL}://#{REQUEST_URL}/#{API_KEY}/"
      self.user=USER
      self.password=PASSWORD
+     
+     # Possible find methods for activeresource:
+     # .find         => calls find_single => calls element_path, then instantiate record
+     # .find(:all)   => calls find_every  => calls instantiate_collection if options[:from] is Symbol
+     #                                    => calls custom path, then instantiate_collection if options[:from] is String
+     #                                    => calls collection_path, then instantiate_collection if options[:from] is not Symbol or String
+     # .find(:first) => calls find_every.first
+     # .find(:one)   => calls instantiate_record if options[:from] is Symbol
+     #               => calls custom path, then instantiate_record if options[:from] is String
+     #               => does nothing and returns nil if options[:from] is not Symbol or String (including if it's left blank)
+     
+     # needed to take out '.xml' from requests for .find
+     # Overriding ActiveResource's code of element_path function
+     def self.element_path(id, prefix_options = {}, query_options = nil)
+       prefix_options, query_options = split_options(prefix_options) if query_options.nil?
+       
+       # path to the resource, which we want to access is evaluated in this statement: 
+       # This is the way ActiveResource does it, but we don't want the .xml inserted into the url, so we take it out
+       # "#{prefix(prefix_options)}#{collection_name}/#{id}.#{format.extension}#{query_string(query_options)}"
+       "#{prefix(prefix_options)}#{collection_name}/#{id}#{query_string(query_options)}"
+     end
+     
+     # needed to remove '.xml' from requests for .find(:all) and .find(:first)
+     # Overriding ActiveResource's code of collection_path function
+     # File active_resource/base.rb, line 313
+     def self.collection_path(prefix_options = {}, query_options = nil)
+       prefix_options, query_options = split_options(prefix_options) if query_options.nil?
+       
+       # took out '.#{format.extension}'
+       # "#{prefix(prefix_options)}#{collection_name}.#{format.extension}#{query_string(query_options)}"
+       "#{prefix(prefix_options)}#{collection_name}#{query_string(query_options)}"
+     end
+     
+     # needed to account for when records are returned as a Hash instead of an Array
+     # for requests like .find(:all)
+     # Overriding ActiveResource's code of instantiate_collection
+     # according to patch for ticket #8798 at the following URL:
+     # http://dev.rubyonrails.org/attachment/ticket/8798/8798-patch.txt
+     def self.instantiate_collection(collection, prefix_options = {})
+       # use to be this one line:
+       # collection.collect! { |record| instantiate_record(record, prefix_options) }
+       
+       # replaced line with this:
+       if collection.is_a?(Hash) && collection.size == 1
+         value = collection.values.first
+         if value.is_a?(Array)
+           value.collect! { |record| instantiate_record(record, prefix_options) }
+         else
+           [ instantiate_record(value, prefix_options) ]
+         end
+       else
+         collection.collect! { |record| instantiate_record(record, prefix_options) }
+       end
+     end
+     
   end
   
   class Admin < Base
@@ -49,6 +121,7 @@ module PipelineDeals
   end
   
   class User < Admin
+     puts self.site
   end
   
   class Deal < Base

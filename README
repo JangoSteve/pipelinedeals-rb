@@ -1,0 +1,30 @@
+So far, this is completely untested, not sure if it works, but wanted to go ahead and get it out there...
+
+Still getting the following error:
+NoMethodError: undefined method `collect!' for #<Hash:0x19d5020>
+	from ./pipelinedeals.rb:84:in `instantiate_collection'
+	from /Library/Ruby/Gems/1.8/gems/activeresource-2.3.2/lib/active_resource/base.rb:576:in `find_every'
+	from /Library/Ruby/Gems/1.8/gems/activeresource-2.3.2/lib/active_resource/base.rb:519:in `find'
+	from (irb):1
+	
+With this request:
+>> user = PipelineDeals::User.find(:all)
+opening connection to sandbox.api.pipelinedeals.com...
+opened
+<- "GET /abd56073b33b0a25/admin/users HTTP/1.1\r\nConnection: close\r\nAccept: application/xml\r\nAuthorization: Basic c2FuZGJveDpzYW5kYm94\r\nHost: sandbox.api.pipelinedeals.com\r\n\r\n"
+-> "HTTP/1.1 200 OK\r\n"
+-> "Date: Wed, 08 Jul 2009 15:43:54 GMT\r\n"
+-> "Server: Mongrel 1.1.4\r\n"
+-> "Status: 200 OK\r\n"
+-> "X-Runtime: 0.02083\r\n"
+-> "ETag: \"7d1d9b1c5686595716b2af6beb36a3f5\"\r\n"
+-> "Cache-Control: private, max-age=0, must-revalidate\r\n"
+-> "Content-Type: text/html; charset=utf-8\r\n"
+-> "Content-Length: 859\r\n"
+-> "Set-Cookie: pipelinedeals_session_id=f003fec4e42e65acd8e5bcc6219b8d88; path=/; expires=Wed, 22 Jul 2009 15:43:54 GMT\r\n"
+-> "Vary: Accept-Encoding\r\n"
+-> "Connection: close\r\n"
+-> "\r\n"
+reading 859 bytes...
+-> "<?xml version=\"1.0\" encoding=\"UTF-8\"?><response><header><responseType>Success</responseType></header><collection><user><id>1</id><name>sandbox</name><fullName>Kevin Smith</fullName><level>3</level></user><user><id>2</id><name>madams</name><fullName>Mike Adams</fullName><level>1</level></user><user><id>4</id><name>john_smith</name><fullName>John Smith</fullName><level>1</level></user><user><id>5</id><name>scosi</name><fullName>Susan Cosi</fullName><level>2</level></user><user><id>6</id><name>mike_barber</name><fullName>Mike  Barber</fullName><level>1</level></user><user><id>7</id><name>rk"
+-> "erry</name><fullName>Richard Kerry</fullName><level>3</level></user><user><id>8</id><name>aroot</name><fullName>Amy Root</fullName><level>2</level></user><user><id>10</id><name>tbell</name><fullName>Tom Bell</fullName><level>1</level></user></collection></response>"
