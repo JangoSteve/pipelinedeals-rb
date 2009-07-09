@@ -3,19 +3,20 @@ require 'activeresource'
 
 # This is debugging code to observe actual HTTP requests being made and response received
 # taken from http://www.nfjsone.com/blog/david_bock/2008/10/debugging_activeresource_connections.html
-class ActiveResource::Connection
-  # Creates new Net::HTTP instance for communication with
-  # remote service and resources.
-  def http
-    http = Net::HTTP.new(@site.host, @site.port)
-    http.use_ssl = @site.is_a?(URI::HTTPS)
-    http.verify_mode = OpenSSL::SSL::VERIFY_NONE if http.use_ssl
-    http.read_timeout = @timeout if @timeout
-    #Here's the addition that allows you to see the output
-    http.set_debug_output $stderr
-    return http
-  end
-end
+
+#class ActiveResource::Connection
+#  # Creates new Net::HTTP instance for communication with
+#  # remote service and resources.
+#  def http
+#    http = Net::HTTP.new(@site.host, @site.port)
+#    http.use_ssl = @site.is_a?(URI::HTTPS)
+#    http.verify_mode = OpenSSL::SSL::VERIFY_NONE if http.use_ssl
+#    http.read_timeout = @timeout if @timeout
+#    #Here's the addition that allows you to see the output
+#    http.set_debug_output $stderr
+#    return http
+#  end
+#end
 
  
 module PipelineDeals
@@ -73,7 +74,7 @@ module PipelineDeals
        # collection.collect! { |record| instantiate_record(record, prefix_options) }
        
        # replaced line with this:
-       if collection.is_a?(Hash) && collection.size == 1
+       if collection.is_a?(Hash)# && collection.size == 1
          value = collection.values.first
          if value.is_a?(Array)
            value.collect! { |record| instantiate_record(record, prefix_options) }
@@ -121,7 +122,6 @@ module PipelineDeals
   end
   
   class User < Admin
-     puts self.site
   end
   
   class Deal < Base

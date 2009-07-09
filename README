@@ -1,30 +1,41 @@
 So far, this is completely untested, not sure if it works, but wanted to go ahead and get it out there...
 
-Still getting the following error:
-NoMethodError: undefined method `collect!' for #<Hash:0x19d5020>
-	from ./pipelinedeals.rb:84:in `instantiate_collection'
-	from /Library/Ruby/Gems/1.8/gems/activeresource-2.3.2/lib/active_resource/base.rb:576:in `find_every'
-	from /Library/Ruby/Gems/1.8/gems/activeresource-2.3.2/lib/active_resource/base.rb:519:in `find'
-	from (irb):1
-	
-With this request:
->> user = PipelineDeals::User.find(:all)
-opening connection to sandbox.api.pipelinedeals.com...
-opened
-<- "GET /abd56073b33b0a25/admin/users HTTP/1.1\r\nConnection: close\r\nAccept: application/xml\r\nAuthorization: Basic c2FuZGJveDpzYW5kYm94\r\nHost: sandbox.api.pipelinedeals.com\r\n\r\n"
--> "HTTP/1.1 200 OK\r\n"
--> "Date: Wed, 08 Jul 2009 15:43:54 GMT\r\n"
--> "Server: Mongrel 1.1.4\r\n"
--> "Status: 200 OK\r\n"
--> "X-Runtime: 0.02083\r\n"
--> "ETag: \"7d1d9b1c5686595716b2af6beb36a3f5\"\r\n"
--> "Cache-Control: private, max-age=0, must-revalidate\r\n"
--> "Content-Type: text/html; charset=utf-8\r\n"
--> "Content-Length: 859\r\n"
--> "Set-Cookie: pipelinedeals_session_id=f003fec4e42e65acd8e5bcc6219b8d88; path=/; expires=Wed, 22 Jul 2009 15:43:54 GMT\r\n"
--> "Vary: Accept-Encoding\r\n"
--> "Connection: close\r\n"
--> "\r\n"
-reading 859 bytes...
--> "<?xml version=\"1.0\" encoding=\"UTF-8\"?><response><header><responseType>Success</responseType></header><collection><user><id>1</id><name>sandbox</name><fullName>Kevin Smith</fullName><level>3</level></user><user><id>2</id><name>madams</name><fullName>Mike Adams</fullName><level>1</level></user><user><id>4</id><name>john_smith</name><fullName>John Smith</fullName><level>1</level></user><user><id>5</id><name>scosi</name><fullName>Susan Cosi</fullName><level>2</level></user><user><id>6</id><name>mike_barber</name><fullName>Mike  Barber</fullName><level>1</level></user><user><id>7</id><name>rk"
--> "erry</name><fullName>Richard Kerry</fullName><level>3</level></user><user><id>8</id><name>aroot</name><fullName>Amy Root</fullName><level>2</level></user><user><id>10</id><name>tbell</name><fullName>Tom Bell</fullName><level>1</level></user></collection></response>"
+Ok, so this works now. Overcame error with response from PipelineDeals API by over-writing ActiveResource's instantiate_collection method.
+
+You can now make API calls such as the following with this library:
+
+users = PipelineDeals::User.find(:all)
+sources = PipelineDeals::LeadSource.find(:all)
+contacts = PipelineDeals::Contact.find(:all, :params => {:userId => 1})
+
+Make sure that all objects other than User and LeadSource have a userId passed in the params field.
+
+However, I'm still quite confused as to why this returns nil:
+contacts = PipelineDeals::Contact.find(:one, :params => {:userId => 1})
+
+Apparently with ActiveResource, the Object.find methods have the following behavior:
+Possible find methods for activeresource:
+.find         => calls find_single => calls element_path, then instantiate record
+.find(:all)   => calls find_every  => calls instantiate_collection if options[:from] is Symbol
+                                   => calls custom path, then instantiate_collection if options[:from] is String
+                                   => calls collection_path, then instantiate_collection if options[:from] is not Symbol or String
+.find(:first) => calls find_every.first
+.find(:one)   => calls instantiate_record if options[:from] is Symbol
+              => calls custom path, then instantiate_record if options[:from] is String
+              => does nothing and returns nil if options[:from] is not Symbol or String (including if it's left blank)
+
+I don't understand why the following function does not have an 'else' statement:
+# File active_resource/base.rb, line 462
+def find_one(options)
+  case from = options[:from]
+  when Symbol
+    instantiate_record(get(from, options[:params]))
+  when String
+    path = "#{from}#{query_string(options[:params])}"
+    instantiate_record(connection.get(path, headers))
+  end
+end
+
+It doesn't seem to me that you should have to define the :from parameter in Object.find(:one) when AR assumes this in both .find(:all) and .find(:first)
+
+At any rate, this code all still needs a lot of testing.
