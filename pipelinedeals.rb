@@ -4,19 +4,19 @@ require 'activeresource'
 # This is debugging code to observe actual HTTP requests being made and response received
 # taken from http://www.nfjsone.com/blog/david_bock/2008/10/debugging_activeresource_connections.html
 
-#class ActiveResource::Connection
-#  # Creates new Net::HTTP instance for communication with
-#  # remote service and resources.
-#  def http
-#    http = Net::HTTP.new(@site.host, @site.port)
-#    http.use_ssl = @site.is_a?(URI::HTTPS)
-#    http.verify_mode = OpenSSL::SSL::VERIFY_NONE if http.use_ssl
-#    http.read_timeout = @timeout if @timeout
-#    #Here's the addition that allows you to see the output
-#    http.set_debug_output $stderr
-#    return http
-#  end
-#end
+class ActiveResource::Connection
+  # Creates new Net::HTTP instance for communication with
+  # remote service and resources.
+  def http
+    http = Net::HTTP.new(@site.host, @site.port)
+    http.use_ssl = @site.is_a?(URI::HTTPS)
+    http.verify_mode = OpenSSL::SSL::VERIFY_NONE if http.use_ssl
+    http.read_timeout = @timeout if @timeout
+    #Here's the addition that allows you to see the output
+    http.set_debug_output $stderr
+    return http
+  end
+end
 
  
 module PipelineDeals
@@ -84,6 +84,32 @@ module PipelineDeals
        else
          collection.collect! { |record| instantiate_record(record, prefix_options) }
        end
+     end
+     
+
+     
+     # needed to patch create method to allow userId to be passed outside of the attributes hash for each object
+     # taken from the ideas posted here: http://b.lesseverything.com/2008/10/30/custom-parameters-in-activeresource-create
+     # File active_resource/base.rb, line 817
+     def self.create(attributes={})
+        user_id = attributes.delete(:userId) # deletes userId from hash and stores is as user_id
+        user_id = "<userId>#{user_id}</userId>"
+        element = self.new(attributes)
+        new_xml = element.to_xml
+        
+        # strips out extraneous xml header info, adds request block and userId to post info
+        new_xml = "<request>" + new_xml[new_xml.index("<#{self.element_name}>")..new_xml.size-1] + user_id + "</request>"
+
+        connection.post(collection_path, new_xml, headers) do |response|
+           self.id = id_from_response(response)
+           load_attributes_from_response(response)
+        end
+     end
+     
+     # only added this because it was raising NoMethod Error by calling it above
+     # File active_resource/base.rb, line 831
+     def self.id_from_response(response)
+       response['Location'][/\/([^\/]*?)(\.\w+)?$/, 1]
      end
      
   end

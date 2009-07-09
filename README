@@ -39,3 +39,8 @@ end
 It doesn't seem to me that you should have to define the :from parameter in Object.find(:one) when AR assumes this in both .find(:all) and .find(:first)
 
 At any rate, this code all still needs a lot of testing.
+
+New create method works. You can now create a new entries like this:
+contact = PipelineDeals::Contact.create(:userId => 1, :firstName => 'Tester', :lastName => 'From API', :companyName => "API Created")
+note = PipelineDeals::Note.create(:userId => 1, :title => 'this is a test', :content => 'This was created using my new ruby wrapper', :personId => 99)
+todo = PipelineDeals::Todo.create(:userId => 1, :dueDate => 'Wed Jul 16 18:32:50 UTC 2008', :description => "Finish this ruby wrapper by last year please", :eventAssignableType => 'Contact', :eventAssignableId => 99, :ownerId => 2, :complete => 1, :eventCategory => 'Milestone')
